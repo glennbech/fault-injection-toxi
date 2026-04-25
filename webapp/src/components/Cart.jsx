@@ -1,21 +1,19 @@
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { LAMBDA_URL } from '../config';
+import React, { useState } from 'react'
+import { motion } from 'framer-motion'
+import { LAMBDA_URL } from '../config'
 
-export default function Cart({ cart, onClose, onUpdateQuantity, onRemoveItem, onClearCart, cartTotal }) {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [statusMessage, setStatusMessage] = useState(null);
+const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => {
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [statusMessage, setStatusMessage] = useState(null)
 
-  // INTENTIONALLY FRAGILE CHECKOUT
-  // No error handling, no retries, no timeout, no circuit breaker
   const handleCheckout = async () => {
     if (cart.length === 0) {
-      setStatusMessage({ type: 'error', text: 'Your cart is empty' });
-      return;
+      setStatusMessage({ type: 'error', text: 'Your cart is empty' })
+      return
     }
 
-    setIsProcessing(true);
-    setStatusMessage({ type: 'loading', text: 'Submitting order...' });
+    setIsProcessing(true)
+    setStatusMessage({ type: 'loading', text: 'Processing your order...' })
 
     try {
       const order = {
@@ -25,51 +23,51 @@ export default function Cart({ cart, onClose, onUpdateQuantity, onRemoveItem, on
           price: item.price,
           quantity: item.quantity
         })),
-        total: cartTotal,
+        total: totalPrice,
         timestamp: new Date().toISOString()
-      };
+      }
 
-      console.log('Sending order to Lambda:', order);
+      console.log('Sending order to Lambda:', order)
 
-      // NO TIMEOUT - request can hang forever
-      // NO RETRY - fails immediately on network issues
-      // NO ERROR HANDLING - crashes on unexpected responses
       const response = await fetch(LAMBDA_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(order)
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      const result = await response.json();
-      console.log('Order response:', result);
+      const result = await response.json()
+      console.log('Order response:', result)
 
-      setStatusMessage({ type: 'success', text: 'Order placed successfully!' });
+      setStatusMessage({ type: 'success', text: 'Order placed successfully!' })
 
-      // Clear cart on success
+      // Clear cart after successful order
       setTimeout(() => {
-        onClearCart();
-        onClose();
-      }, 2000);
+        cart.forEach(item => onRemoveItem(item.id))
+        setStatusMessage(null)
+        onClose()
+      }, 2000)
 
     } catch (error) {
-      // Minimal error handling - just log and show generic message
-      console.error('Checkout failed:', error);
-      setStatusMessage({ type: 'error', text: `Order failed: ${error.message}` });
+      console.error('Checkout failed:', error)
+      setStatusMessage({
+        type: 'error',
+        text: `Order failed: ${error.message}`
+      })
     } finally {
-      setIsProcessing(false);
+      setIsProcessing(false)
     }
-  };
+  }
 
   return (
     <>
       <motion.div
-        className="cart-overlay"
+        className="cart-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -99,39 +97,36 @@ export default function Cart({ cart, onClose, onUpdateQuantity, onRemoveItem, on
           {cart.length === 0 ? (
             <p className="empty-cart">Your cart is empty</p>
           ) : (
-            cart.map((item) => (
+            cart.map(item => (
               <motion.div
                 key={item.id}
                 className="cart-item"
                 layout
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
+                exit={{ opacity: 0, x: -20 }}
               >
-                <div className="cart-item-image">{item.emoji}</div>
+                <div className="cart-item-image">{item.image}</div>
                 <div className="cart-item-details">
-                  <div className="cart-item-name">{item.name}</div>
-                  <div className="cart-item-price">${item.price.toFixed(2)}</div>
-                  <div className="cart-item-controls">
+                  <h4>{item.name}</h4>
+                  <p className="item-price">${item.price.toFixed(2)}</p>
+
+                  <div className="quantity-controls">
                     <motion.button
-                      className="quantity-btn"
-                      onClick={() => onUpdateQuantity(item.id, -1)}
-                      whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
                     >
-                      -
+                      −
                     </motion.button>
-                    <span className="quantity">{item.quantity}</span>
+                    <span>{item.quantity}</span>
                     <motion.button
-                      className="quantity-btn"
-                      onClick={() => onUpdateQuantity(item.id, 1)}
-                      whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
+                      onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
                     >
                       +
                     </motion.button>
                     <motion.button
-                      className="remove-btn"
+                      className="remove-button"
                       onClick={() => onRemoveItem(item.id)}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -148,15 +143,15 @@ export default function Cart({ cart, onClose, onUpdateQuantity, onRemoveItem, on
         <div className="cart-footer">
           <div className="cart-total">
             <span>Total:</span>
-            <span>${cartTotal.toFixed(2)}</span>
+            <span className="total-amount">${totalPrice.toFixed(2)}</span>
           </div>
 
           <motion.button
-            className={`checkout-btn ${isProcessing ? 'loading' : ''}`}
+            className="checkout-button"
             onClick={handleCheckout}
             disabled={isProcessing || cart.length === 0}
-            whileHover={!isProcessing ? { scale: 1.02 } : {}}
-            whileTap={!isProcessing ? { scale: 0.98 } : {}}
+            whileHover={{ scale: cart.length > 0 ? 1.05 : 1 }}
+            whileTap={{ scale: cart.length > 0 ? 0.95 : 1 }}
           >
             {isProcessing ? 'Processing...' : 'Checkout'}
           </motion.button>
@@ -173,5 +168,7 @@ export default function Cart({ cart, onClose, onUpdateQuantity, onRemoveItem, on
         </div>
       </motion.div>
     </>
-  );
+  )
 }
+
+export default Cart

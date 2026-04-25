@@ -213,10 +213,10 @@ terraform apply
 
 ### Configure the Webapp
 
-Open `webapp/src/components/Cart.jsx` in VS Code and update the Lambda function URL with the output from terraform:
+Open `webapp/src/config.js` in VS Code and update the Lambda function URL with the output from terraform:
 
 ```javascript
-const LAMBDA_URL = 'YOUR_FUNCTION_URL_HERE';  // From terraform output
+export const LAMBDA_URL = 'https://your-lambda-url.lambda-url.eu-north-1.on.aws/';  // From terraform output
 ```
 
 Save the file.
@@ -304,10 +304,10 @@ Note: Docker is pre-installed in your Codespace. You may need to wait a few seco
 
 ### Configure the Proxy
 
-Update `webapp/src/components/Cart.jsx` to use ToxiProxy instead of direct Lambda URL:
+Update `webapp/src/config.js` to use ToxiProxy instead of direct Lambda URL:
 
 ```javascript
-const LAMBDA_URL = 'http://localhost:8000';  // Through ToxiProxy
+export const LAMBDA_URL = 'http://localhost:8000';  // Through ToxiProxy
 ```
 
 ### Add Latency Toxic
