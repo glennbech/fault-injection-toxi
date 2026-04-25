@@ -28,7 +28,7 @@ module "chaos_coffee" {
 
 # Outputs
 output "lambda_function_url" {
-  description = "Use this URL in webapp/app.js and webapp/toxiproxy-config.json"
+  description = "Use this URL in webapp/src/config.js"
   value       = module.chaos_coffee.lambda_function_url
 }
 

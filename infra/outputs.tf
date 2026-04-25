@@ -35,9 +35,9 @@ output "instructions" {
   Deployment complete!
 
   1. Copy the Lambda Function URL above
-  2. Open webapp/app.js and update LAMBDA_URL with this value
-  3. Open webapp/index.html in your browser
-  4. Try to checkout - you will encounter CORS errors (this is expected!)
+  2. Open webapp/src/config.js and update LAMBDA_URL with this value
+  3. Run 'npm run dev' in the webapp directory
+  4. Open the app in your browser and test the checkout
 
   View Lambda logs:
     aws logs tail ${aws_cloudwatch_log_group.lambda_logs.name} --follow
