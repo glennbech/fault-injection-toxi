@@ -41,3 +41,18 @@ deployments/
 # Local config
 local.env
 .env
+
+# Node modules
+node_modules/
+webapp/node_modules/
+
+# Build artifacts
+dist/
+webapp/dist/
+
+# PDF generation artifacts
+*.pdf
+pdf-*/
+fixed-pdfs/
+optimized-pdfs/
+presentation-analysis/
