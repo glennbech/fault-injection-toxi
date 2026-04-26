@@ -38,25 +38,6 @@ GitHub will automatically set up your environment with:
 
 Your Codespace will be ready in 1-2 minutes. No local installation required!
 
-### Configure Claude Code API Key (For Codespaces)
-
-**Option 1: Repository Secret (Recommended for class)**
-
-Your instructor can add the API key as a repository secret:
-
-1. Go to repository Settings → Secrets and variables → Codespaces
-2. Add a new secret: `ANTHROPIC_API_KEY` with the API key value
-3. All students' Codespaces will automatically have access
-
-**Option 2: Personal Secret (If using your own API key)**
-
-1. Go to https://github.com/settings/codespaces
-2. Click "New secret"
-3. Name: `ANTHROPIC_API_KEY`
-4. Value: Your Anthropic API key
-5. Select repository access
-
-Once set up, Claude Code will work automatically in your Codespace without needing to authenticate.
 
 ## Architecture
 
@@ -122,7 +103,13 @@ AWS_REGION=eu-north-1
 # Application Configuration
 STUDENT_ID=your-unique-id  # Replace with your name (lowercase, no spaces)
 TABLE_NAME=chaos-coffee-$STUDENT_ID  # Automatically uses your STUDENT_ID
+
+# Claude Code API Key (for Part 2 and Part 3 AI exercises)
+# Your instructor will provide this key
+ANTHROPIC_API_KEY=sk-ant-xxxxx
 ```
+
+**Note:** The `ANTHROPIC_API_KEY` is provided by your instructor for class use. This enables Claude Code CLI to work in Part 2 and Part 3 without needing your own subscription.
 
 ## Lab Structure
 
