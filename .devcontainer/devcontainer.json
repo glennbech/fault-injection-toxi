@@ -18,7 +18,6 @@
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
     },
-    "ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
   },
 
   "customizations": {
