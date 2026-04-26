@@ -29,13 +29,20 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
 
       console.log('Sending order to service:', order)
 
+      // Create AbortController for 5-second timeout (enterprise architecture rule)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 5000)
+
       const response = await fetch(SERVICE_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(order)
+        body: JSON.stringify(order),
+        signal: controller.signal
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`)
@@ -55,10 +62,19 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
 
     } catch (error) {
       console.error('Checkout failed:', error)
-      setStatusMessage({
-        type: 'error',
-        text: `Order failed: ${error.message}`
-      })
+
+      // Check if it was a timeout
+      if (error.name === 'AbortError') {
+        setStatusMessage({
+          type: 'error',
+          text: 'Order timed out after 5 seconds (enterprise timeout policy)'
+        })
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `Order failed: ${error.message}`
+        })
+      }
     } finally {
       setIsProcessing(false)
     }

@@ -514,18 +514,11 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
     "type": "latency",
     "attributes": {"latency": 1500}
   }'
-
-# Add 5-second timeout (enterprise architecture rule)
-curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "enterprise-timeout",
-    "type": "timeout",
-    "attributes": {"timeout": 5000}
-  }'
 ```
 
 **Service processing time now:** 2-3 seconds + 1.5 seconds = **3.5-4.5 seconds**
+
+**Note:** The webapp has a 5-second timeout configured (enterprise architecture rule). Requests taking longer than 5 seconds will be aborted by the frontend.
 
 **Steps:**
 1. Place 10 orders (do this multiple times)
@@ -551,7 +544,6 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 **Clean up:**
 ```bash
 curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/peak-load-latency
-curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/enterprise-timeout
 ```
 
 ---
@@ -572,18 +564,11 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
     "type": "latency",
     "attributes": {"latency": 3000, "jitter": 500}
   }'
-
-# Add 5-second timeout (enterprise rule)
-curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "name": "enterprise-timeout",
-    "type": "timeout",
-    "attributes": {"timeout": 5000}
-  }'
 ```
 
-**Service processing time now:** 2-3 seconds + 3 seconds = **5-6 seconds**
+**Service processing time now:** 2-3 seconds + 3 seconds (±500ms jitter) = **5-6 seconds**
+
+**Note:** The webapp has a 5-second timeout. With jitter, some requests will complete just under 5 seconds, but most will exceed it and timeout.
 
 **Steps:**
 1. Place 10 orders
@@ -596,7 +581,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 
 **Critical Discovery:**
 You'll likely find that:
-- Frontend shows "Order failed: HTTP error! status: 500"
+- Frontend shows "Order timed out after 5 seconds (enterprise timeout policy)"
 - But the backend successfully saved many orders to DynamoDB
 - Users think their order failed and might try again
 - **Result:** Duplicate orders and confused customers
@@ -604,7 +589,6 @@ You'll likely find that:
 **Clean up:**
 ```bash
 curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/black-friday-latency
-curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/enterprise-timeout
 ```
 
 ## Step 8: Reflect and Document Your Findings
