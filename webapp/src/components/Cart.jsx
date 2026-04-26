@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { SERVICE_URL } from '../config.js'
+import { SERVICE_URL, REQUEST_TIMEOUT } from '../config.js'
 
 const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -31,7 +31,7 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
 
       // Create AbortController with timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
 
       const response = await fetch(SERVICE_URL, {
         method: 'POST',
@@ -160,6 +160,15 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
           <div className="cart-total">
             <span>Total:</span>
             <span className="total-amount">${(totalPrice || 0).toFixed(2)}</span>
+          </div>
+
+          <div style={{
+            fontSize: '11px',
+            color: '#666',
+            marginBottom: '8px',
+            textAlign: 'center'
+          }}>
+            Request timeout: {REQUEST_TIMEOUT / 1000}s
           </div>
 
           <motion.button

@@ -461,19 +461,19 @@ Your enterprise architect just announced a new mandate:
 
 To comply with the enterprise architecture decision, you need to update the webapp to enforce a 5-second timeout.
 
-**Edit `webapp/src/components/Cart.jsx`:**
+**Edit `webapp/src/config.js`:**
 
-Find this line (around line 34):
+Find this line:
 ```javascript
-const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+export const REQUEST_TIMEOUT = 30000;
 ```
 
 Change it to:
 ```javascript
-const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout (enterprise policy)
+export const REQUEST_TIMEOUT = 5000;
 ```
 
-**Save the file.** The webapp will automatically reload with hot module replacement.
+**Save the file.** The webapp will automatically reload with hot module replacement. You'll see the timeout value update in the cart footer (it will show "Request timeout: 5s").
 
 ### Current Service Behavior
 
