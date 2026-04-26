@@ -787,6 +787,15 @@ After each experiment, you'll **take notes** on the AI's suggestions, your asses
 
 ## Experiment 1: Minimal Context
 
+### Before You Start
+
+**Important:** To avoid wasting tokens on irrelevant files, guide Claude Code to focus on the right folders:
+
+```
+Focus on these folders: webapp/src/, service/, infra/
+Ignore: node_modules/, .git/, lambda/ (old deprecated code)
+```
+
 ### The Prompt
 
 Start a conversation with Claude Code and say:
@@ -820,6 +829,9 @@ Think about and be ready to discuss:
 Start a **new conversation** with detailed requirements:
 
 ```
+Focus on: webapp/src/, service/, infra/
+Ignore: node_modules/, .git/, lambda/
+
 I want to re-architect my coffee shop application for better robustness and decoupling.
 
 Current architecture:
@@ -882,6 +894,9 @@ Think about and be ready to discuss:
 ### Example Iteration
 
 ```
+Focus on: webapp/src/, service/, infra/
+Ignore: node_modules/, .git/, lambda/
+
 I want to improve the robustness of my coffee shop application. Before we write any code, let's create a plan.
 
 Current situation:
