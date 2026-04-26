@@ -620,6 +620,15 @@ When orders timeout in the frontend, what actually happens on the backend?
 curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/black-friday-latency
 ```
 
+## Step 8: Share Your Findings
+
+Take a few minutes to summarize what you discovered during the chaos experiments. Be prepared to share with the class:
+
+- What surprised you most about how the system behaved under stress?
+- What happened when requests timed out on the frontend? Did the backend stop processing?
+- What problems would real users experience with this system?
+- What would you fix first?
+
 ---
 
 # Part 2: Robustness Improvements
