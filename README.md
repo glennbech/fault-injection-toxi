@@ -101,10 +101,8 @@ AWS_REGION=eu-north-1
 
 # Application Configuration
 STUDENT_ID=your-unique-id  # Replace with your name (lowercase, no spaces)
-TABLE_NAME=chaos-coffee-your-unique-id  # DynamoDB table name (will be set after Terraform)
+TABLE_NAME=chaos-coffee-$STUDENT_ID  # Automatically uses your STUDENT_ID
 ```
-
-**Important:** The `TABLE_NAME` will be updated after you deploy infrastructure with Terraform in Step 3.
 
 ## Lab Structure
 
