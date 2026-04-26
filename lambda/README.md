@@ -8,6 +8,43 @@ This Lambda function receives coffee shop orders from the webapp and stores them
 - **Trigger:** Lambda Function URL (no API Gateway)
 - **Storage:** DynamoDB table with PK/SK pattern
 - **Permissions:** IAM role with DynamoDB PutItem permission
+- **Timeout:** 5 seconds (intentionally tight for chaos engineering)
+
+## Order Processing Flow
+
+When an order is received, the Lambda function performs these operations **synchronously**:
+
+1. **Parse and validate** the order request
+2. **Save to DynamoDB** - stores the order record
+3. **Charge credit card** - mock external call (500-1000ms random delay)
+4. **Update SAP ERP** - mock external call (500-1000ms random delay)
+5. **Create DHL shipping order** - mock external call (500-1000ms random delay)
+
+**Total processing time:** 1.5-3 seconds (plus DynamoDB latency)
+
+### Mock External Service Delays
+
+The Lambda includes three mock external service calls to simulate real-world dependencies. **Each call has a random delay between 500-1000 milliseconds:**
+
+| Function | Delay | Purpose |
+|----------|-------|---------|
+| `chargeCreditCard()` | **500-1000ms** | Simulates payment processor API (Stripe, etc.) |
+| `updateSAP()` | **500-1000ms** | Simulates enterprise ERP system update |
+| `orderShippingDHL()` | **500-1000ms** | Simulates shipping provider API call |
+
+**Total delay range:** 1500-3000ms (1.5-3 seconds) per order
+
+These delays are **intentional** for the chaos engineering lab, demonstrating:
+- Long-running synchronous operations that block the Lambda
+- Cascading timeouts when external services are slow
+- The fragility of distributed synchronous chains
+- Why async/event-driven architectures matter in production systems
+
+**Critical Timing Constraint:**
+- Lambda timeout: **5 seconds**
+- Processing time: **1.5-3 seconds** (mock delays only)
+- Remaining buffer: **2-3.5 seconds** for DynamoDB operations and network overhead
+- Adding ToxiProxy latency (e.g., 1-2 seconds) will likely cause timeouts!
 
 ## Data Model
 

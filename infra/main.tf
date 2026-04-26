@@ -101,7 +101,7 @@ resource "aws_lambda_function" "order_processor" {
     }
   }
 
-  timeout     = 10
+  timeout     = 5
   memory_size = 128
 
   tags = {

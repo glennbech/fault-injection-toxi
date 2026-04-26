@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"time"
 
@@ -65,6 +66,36 @@ func init() {
 	dynamoClient = dynamodb.NewFromConfig(cfg)
 }
 
+// Mock external service calls for chaos engineering demonstrations
+// These simulate the latency of real external services
+
+func chargeCreditCard(ctx context.Context, orderID string, amount float64) error {
+	// Simulate credit card processing: 500-1000ms
+	delay := time.Duration(500+rand.Intn(501)) * time.Millisecond
+	log.Printf("[chargeCreditCard] Processing payment for order %s, amount: $%.2f (delay: %v)", orderID, amount, delay)
+	time.Sleep(delay)
+	log.Printf("[chargeCreditCard] Payment successful for order %s", orderID)
+	return nil
+}
+
+func updateSAP(ctx context.Context, orderID string, orderData OrderRecord) error {
+	// Simulate SAP ERP update: 500-1000ms
+	delay := time.Duration(500+rand.Intn(501)) * time.Millisecond
+	log.Printf("[updateSAP] Updating SAP for order %s (delay: %v)", orderID, delay)
+	time.Sleep(delay)
+	log.Printf("[updateSAP] SAP updated successfully for order %s", orderID)
+	return nil
+}
+
+func orderShippingDHL(ctx context.Context, orderID string, items []OrderItem) error {
+	// Simulate DHL shipping order: 500-1000ms
+	delay := time.Duration(500+rand.Intn(501)) * time.Millisecond
+	log.Printf("[orderShippingDHL] Creating shipping order for %s (delay: %v)", orderID, delay)
+	time.Sleep(delay)
+	log.Printf("[orderShippingDHL] Shipping order created for %s", orderID)
+	return nil
+}
+
 func handler(ctx context.Context, request events.LambdaFunctionURLRequest) (events.LambdaFunctionURLResponse, error) {
 	log.Printf("Received request: Method=%s, Body=%s", request.RequestContext.HTTP.Method, request.Body)
 
@@ -116,6 +147,39 @@ func handler(ctx context.Context, request events.LambdaFunctionURLRequest) (even
 	}
 
 	log.Printf("Order %s saved successfully for student %s", orderID, studentID)
+
+	// Process order through external systems (mock calls for chaos engineering)
+	// In a real system, these would be async/event-driven to avoid long synchronous chains
+	log.Printf("Starting external service calls for order %s", orderID)
+
+	// 1. Charge credit card (500-1000ms)
+	if err := chargeCreditCard(ctx, orderID, order.Total); err != nil {
+		log.Printf("Credit card charge failed: %v", err)
+		return events.LambdaFunctionURLResponse{
+			StatusCode: 500,
+			Body:       fmt.Sprintf(`{"error": "Payment processing failed: %v"}`, err),
+		}, nil
+	}
+
+	// 2. Update SAP ERP system (500-1000ms)
+	if err := updateSAP(ctx, orderID, record); err != nil {
+		log.Printf("SAP update failed: %v", err)
+		return events.LambdaFunctionURLResponse{
+			StatusCode: 500,
+			Body:       fmt.Sprintf(`{"error": "ERP update failed: %v"}`, err),
+		}, nil
+	}
+
+	// 3. Create shipping order with DHL (500-1000ms)
+	if err := orderShippingDHL(ctx, orderID, order.Items); err != nil {
+		log.Printf("Shipping order failed: %v", err)
+		return events.LambdaFunctionURLResponse{
+			StatusCode: 500,
+			Body:       fmt.Sprintf(`{"error": "Shipping order failed: %v"}`, err),
+		}, nil
+	}
+
+	log.Printf("All external services processed successfully for order %s", orderID)
 
 	// Return success response
 	// NOTE: Intentionally NO CORS headers - this is part of the chaos engineering exercise
