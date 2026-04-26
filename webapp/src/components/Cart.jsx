@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
-import { LAMBDA_URL } from '../config'
+import { LAMBDA_URL } from '../config.js'
 
 const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -143,7 +143,7 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
         <div className="cart-footer">
           <div className="cart-total">
             <span>Total:</span>
-            <span className="total-amount">${totalPrice.toFixed(2)}</span>
+            <span className="total-amount">${(totalPrice || 0).toFixed(2)}</span>
           </div>
 
           <motion.button
