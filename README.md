@@ -610,7 +610,7 @@ When orders timeout in the frontend, what actually happens on the backend?
 
 3. **Critical question:** If the frontend times out after 5 seconds, does the backend stop processing the order or does it continue?
 
-**Document your findings:**
+**Think about:**
 - What is the data consistency problem here?
 - Why might users submit duplicate orders?
 - What happens if a user sees "timeout" and clicks checkout again?
@@ -1098,11 +1098,11 @@ That's it. Don't provide additional context unless Claude asks.
 
 ### Take Notes
 
-Create a file `AI-EXPERIMENT-1-MINIMAL.md` documenting:
-- Claude's questions and assumptions
-- Solutions proposed
-- Your assessment (strengths, weaknesses, surprises)
-- What you learned about prompting AI
+Think about and be ready to discuss:
+- What questions did Claude ask?
+- What solutions were proposed?
+- Strengths, weaknesses, and surprises
+- What did you learn about prompting AI?
 
 ## Experiment 2: Detailed Context
 
@@ -1150,21 +1150,23 @@ Please suggest an architecture that achieves these goals. Explain the trade-offs
 
 ### Take Notes
 
-Create `AI-EXPERIMENT-2-DETAILED.md` documenting:
-- Architecture proposed
-- Components to add and their trade-offs
-- Technologies suggested
-- Comparison to Experiment 1
-- What you learned
+Think about and be ready to discuss:
+- What architecture was proposed?
+- What components and trade-offs were suggested?
+- What technologies did Claude recommend?
+- How does this compare to Experiment 1?
+- What did you learn?
 
 ## Experiment 3: Plan Mode Collaboration
 
 ### The Workflow
 
-1. Start a **new conversation** and enter **plan mode**
-2. Ask Claude to explore multiple architectural options
-3. Iterate on the proposals through back-and-forth discussion
-4. Refine until you have a clear plan
+1. Start a **new conversation** with Claude Code
+2. **IMPORTANT:** Enter **plan mode** FIRST before asking your question
+3. Ask Claude to explore multiple architectural options
+4. Iterate on the proposals through back-and-forth discussion
+5. Refine until you have a clear plan
+6. Exit plan mode and approve the plan to execute
 
 ### Example Iteration
 
@@ -1191,42 +1193,16 @@ Then iterate with questions like:
 
 ### Take Notes
 
-Create `AI-EXPERIMENT-3-PLAN-MODE.md` documenting:
-- The iteration log (questions asked, responses)
-- Final plan agreed upon
-- How plan mode changed the collaboration
-- Quality assessment of the final plan
+Think about and be ready to discuss:
+- What questions did you ask in the iteration?
+- What was the final plan?
+- How did plan mode change the collaboration?
+- Quality of the final plan - what worked well?
 
-## Optional: Implement the Plan
-
-If time permits, implement one of the proposed architectures and document what worked vs. what needed adjustment in `AI-EXPERIMENT-3-IMPLEMENTATION.md`.
 
 ## Reflection
 
-After completing all experiments, create `AI-EXPERIMENTS-REFLECTION.md`:
-
-```markdown
-# Overall Reflection on AI-Assisted Architecture
-
-## Key Learnings
-1. [Most important lesson]
-2. [Second lesson]
-3. [Third lesson]
-
-## Best Practices Discovered
-- Prompting strategies that work
-- How to iterate effectively
-- When to trust vs question AI
-
-## The Human's Role
-- What can AI not do (yet)?
-- Where was your expertise critical?
-- What decisions should always be human-made?
-```
-
-## Discussion Questions
-
-Prepare to discuss:
+After completing all experiments, prepare to discuss:
 
 1. Which prompting strategy worked best?
 2. Did AI suggest anything you wouldn't have thought of?
