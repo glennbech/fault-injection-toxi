@@ -52,7 +52,5 @@
     "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
   ],
 
-  "remoteUser": "vscode",
-
-  "runArgs": ["--env-file", ".env"]
+  "remoteUser": "vscode"
 }
