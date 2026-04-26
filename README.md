@@ -133,7 +133,7 @@ Open `service/main.go` in the VS Code editor.
 
 **Key observations:**
 - The HTTP handler accepts POST requests with JSON payload
-- It stores data in DynamoDB with `student_id` as partition key
+- It stores data in DynamoDB with `student_id` as partition key (this comes from the `STUDENT_ID` environment variable in your `.env` file)
 - Simple error handling with basic logging
 - Runs as a standalone HTTP server in Docker
 
@@ -196,7 +196,7 @@ provider "aws" {
 module "coffee_chaos" {
   source = "../infra"
 
-  student_id = "YOUR_NAME_HERE"  # Replace with your name (lowercase, no spaces)
+  student_id = "YOUR_NAME_HERE"  # Use the same value as STUDENT_ID in your .env file
 }
 
 output "dynamodb_table_name" {
