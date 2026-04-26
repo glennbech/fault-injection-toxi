@@ -631,215 +631,424 @@ Take a few minutes to summarize what you discovered during the chaos experiments
 
 ---
 
-# Part 2: Robustness Improvements
+# Part 2: Production-Ready Robustness (Optional - For Fast Learners)
 
-Now that you've experienced the chaos of distributed systems firsthand, it's time to make your application more robust. In this part, you'll implement improvements to handle network failures, timeouts, and other issues gracefully.
+In Part 1, you discovered the "silent order" problem: frontend times out and shows an error, but the backend continues processing and saves the order to DynamoDB. Users think their order failed, so they might click checkout again, creating duplicate orders.
 
-## Task Overview
+This is a classic problem in distributed systems. In this part, you'll implement the industry-standard solution used by Stripe, AWS, and all major payment APIs: **idempotency keys with automatic retries**.
 
-Choose **ONE** of the three robustness improvements below to implement. After implementing your chosen improvement:
+## Understanding Idempotency Keys
 
-1. **Deploy** your changes (rebuild containers and/or restart webapp as needed)
-2. **Test** using your ToxiProxy setup from Part 1
-3. **Observe** how your improvement affects the application behavior
-4. **Document** your findings (what worked, what didn't, what you learned)
+**What is an idempotency key?**
 
-> **Important**: Implement one improvement at a time. Deploy, test, and observe before moving to the next one.
+An idempotency key is a unique identifier (usually a UUID) that you send with a request to ensure that performing the same operation multiple times has the same effect as performing it once.
 
-## Option 1: Frontend Retry Logic with Exponential Backoff
+**Real-world example:**
 
-### Problem
-When the microservice is slow or temporarily unavailable, the frontend gives up after a single failed request. Users see an error immediately, even though the backend might recover in a few seconds.
+When you use Stripe's payment API, you send an `Idempotency-Key` header:
 
-### Current Behavior
-In `webapp/src/components/Cart.jsx:32-44`, a single fetch request is made with no retry logic.
+```http
+POST /v1/charges
+Idempotency-Key: abc-123-def-456
+Content-Type: application/json
 
-### Your Task
-Implement a retry mechanism with exponential backoff in the Cart component:
-
-1. **Add retry logic**: If the request fails, retry up to 3 times
-2. **Exponential backoff**: Wait 1s, then 2s, then 4s between retries
-3. **User feedback**: Update the status message to show retry attempts
-4. **Timeout handling**: Add a timeout to each fetch request (e.g., 10 seconds)
-
-### Hints
-- Create a `retryFetch()` helper function that wraps the fetch call
-- Use `setTimeout()` or `async/await` with delays for backoff
-- Consider using `AbortController` for request timeouts
-- Update UI to show "Retrying (attempt 2/3)..." messages
-
-### Testing with ToxiProxy
-```bash
-# Simulate temporary outage (recovers after 5 seconds)
-curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
-  -d '{"name": "latency_spike", "type": "latency", "attributes": {"latency": 3000}}'
-
-# Try checkout - your retry logic should succeed after 1-2 retries
-
-# Remove toxic
-curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/latency_spike
+{"amount": 1000, "currency": "usd", "source": "tok_visa"}
 ```
 
-### Success Criteria
-- Application successfully completes checkout even with temporary network issues
-- User sees clear feedback about retry attempts
-- No duplicate orders are created
+If the request times out and you retry with the **same key**, Stripe returns the existing charge instead of creating a duplicate. This prevents charging customers twice.
 
-## Option 2: Microservice Request Validation and Error Handling
+**Why are idempotency keys critical?**
 
-### Problem
-The Go microservice doesn't validate incoming requests thoroughly. Invalid data can cause crashes or be stored in DynamoDB. There's also no idempotency protection against duplicate requests.
+1. **Prevents duplicates**: Safe to retry failed requests
+2. **Industry standard**: Used by Stripe, AWS, Square, and all major payment APIs
+3. **Enables automatic retries**: Frontend can retry without fear of duplicates
+4. **Production-ready**: This is how real systems handle distributed transactions
 
-### Current Behavior
-In `service/main.go`, minimal validation is performed - only checks if JSON is parsable.
+## Implementation Overview
 
-### Your Task
-Add comprehensive validation and error handling to the microservice:
+You'll implement TWO interdependent parts:
 
-1. **Request validation**:
-   - Verify `order.Items` is not empty
-   - Validate that item prices are positive numbers
-   - Validate that quantities are positive integers
-   - Check that `order.Total` matches the sum of items
-   - Ensure `order.Timestamp` is a valid ISO8601 date
+### Part A: Idempotency Keys (Frontend + Backend)
 
-2. **Idempotency**:
-   - Accept an optional `idempotency_key` in the request
-   - Before processing, check if an order with this key already exists
-   - Return the existing order if found (preventing duplicates)
-   - Store the idempotency key in DynamoDB
+**Frontend (`Cart.jsx`):**
+- Generate UUID when user clicks checkout button (ONCE per click)
+- Include `idempotency_key` in request body
+- Retry logic reuses the SAME key for all retry attempts
 
-3. **Error responses**:
-   - Return specific HTTP status codes (400 for validation, 409 for duplicates, 500 for server errors)
-   - Include detailed error messages that help debug issues
+**Backend (`main.go`):**
+- Before processing order, scan DynamoDB for existing order with this key
+- If found: return existing order (200 OK)
+- If not found: process normally and save with key
 
-### Hints
-- Create a `validateOrder()` function that returns specific validation errors
-- Add `IdempotencyKey` field to the `Order` and `OrderRecord` structs
-- Use DynamoDB's `ConditionExpression` to prevent duplicate keys
-- Consider adding GSI on `IdempotencyKey` for efficient lookups
+### Part B: Automatic Retry with Exponential Backoff (Frontend)
 
-### Testing
-```bash
-# Test with duplicate submissions
-# In your browser console:
-const order = {
-  items: [{id: "1", name: "Coffee", price: 15.99, quantity: 1}],
-  total: 15.99,
-  timestamp: new Date().toISOString(),
-  idempotency_key: "test-123"
+**Why automatic retries are necessary:**
+
+Without automatic retries, idempotency only prevents duplicates if the user manually retries. But users shouldn't have to click again - the system should retry automatically.
+
+**Retry strategy:**
+- Retry on timeout (`AbortError`) or 5xx server errors
+- Delays: 1s, 3s, 5s between attempts
+- **Critical**: Reuse the SAME idempotency key from the original click
+- Stop on success or non-retryable error (4xx)
+
+## Frontend Changes Needed
+
+**File:** `webapp/src/components/Cart.jsx`
+
+### What to implement:
+
+1. **Generate idempotency key at START of handleCheckout** (before try block)
+2. **Store key in variable** - this stays the same across all retries
+3. **Include key in order object**
+4. **Add retry loop** with exponential backoff delays
+5. **Reuse same key** for all retry attempts
+6. **Show retry progress** in UI
+
+### Pseudocode:
+
+```javascript
+const handleCheckout = async () => {
+  // STEP 1: Generate key ONCE per button click (not per request!)
+  const idempotencyKey = crypto.randomUUID()
+
+  setIsProcessing(true)
+
+  // STEP 2: Retry loop with exponential backoff
+  const delays = [0, 1000, 3000, 5000] // 0s, 1s, 3s, 5s
+
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    // Wait before retry (0ms on first attempt)
+    if (delays[attempt] > 0) {
+      await new Promise(resolve => setTimeout(resolve, delays[attempt]))
+      setStatusMessage({
+        type: 'loading',
+        text: `Retrying... (attempt ${attempt + 1}/${delays.length})`
+      })
+    }
+
+    try {
+      // STEP 3: Build order with idempotency key
+      const order = {
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        total: totalPrice,
+        timestamp: new Date().toISOString(),
+        idempotency_key: idempotencyKey  // SAME key every retry!
+      }
+
+      console.log('Sending order (attempt', attempt + 1, '):', order)
+
+      // STEP 4: Make request with timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT)
+
+      const response = await fetch(SERVICE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order),
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      // STEP 5: Handle response
+      if (!response.ok) {
+        // Retry on 5xx server errors
+        if (response.status >= 500 && attempt < delays.length - 1) {
+          console.log('Server error, will retry...')
+          continue // Try again
+        }
+
+        // Don't retry on 4xx client errors
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      // Success!
+      const result = await response.json()
+      console.log('Order response:', result)
+
+      setStatusMessage({ type: 'success', text: 'Order placed successfully!' })
+
+      // Clear cart after successful order
+      setTimeout(() => {
+        cart.forEach(item => onRemoveItem(item.id))
+        setStatusMessage(null)
+        onClose()
+      }, 2000)
+
+      return // Exit retry loop
+
+    } catch (error) {
+      console.error(`Checkout attempt ${attempt + 1} failed:`, error)
+
+      // STEP 6: Retry on timeout
+      if (error.name === 'AbortError' && attempt < delays.length - 1) {
+        console.log('Request timed out, will retry...')
+        continue // Try again
+      }
+
+      // Give up - show error
+      if (error.name === 'AbortError') {
+        setStatusMessage({
+          type: 'error',
+          text: 'Order timed out after multiple retries'
+        })
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `Order failed: ${error.message}`
+        })
+      }
+
+      break // Exit retry loop
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+}
+```
+
+## Backend Changes Needed
+
+**File:** `service/main.go`
+
+### What to implement:
+
+1. **Add `IdempotencyKey` field** to `Order` and `OrderRecord` structs
+2. **Before processing**, scan DynamoDB for existing order with this key
+3. **If found**, return existing order (prevent duplicate)
+4. **If not found**, process normally and save with key
+
+### Algorithm (pseudocode):
+
+```go
+func handleOrder(w http.ResponseWriter, r *http.Request) {
+    // STEP 1: Parse request body
+    var order Order
+    if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
+        http.Error(w, "Invalid JSON", http.StatusBadRequest)
+        return
+    }
+
+    log.Printf("Received order with idempotency key: %s", order.IdempotencyKey)
+
+    // STEP 2: Check if order with this idempotency key already exists
+    if order.IdempotencyKey != "" {
+        existingOrder := findOrderByIdempotencyKey(order.IdempotencyKey)
+
+        // STEP 3: If found, return existing order
+        if existingOrder != nil {
+            log.Printf("Found existing order %s with key %s - returning it",
+                existingOrder.OrderID, order.IdempotencyKey)
+
+            w.Header().Set("Content-Type", "application/json")
+            w.WriteHeader(http.StatusOK)
+            json.NewEncoder(w).Encode(existingOrder)
+            return
+        }
+    }
+
+    // STEP 4: New order - process normally
+    orderID := generateOrderID()
+    studentID := os.Getenv("STUDENT_ID")
+
+    // Create order record WITH idempotency key
+    record := OrderRecord{
+        PK:              fmt.Sprintf("STUDENT#%s", studentID),
+        SK:              fmt.Sprintf("ORDER#%s", orderID),
+        OrderID:         orderID,
+        IdempotencyKey:  order.IdempotencyKey,  // Save the key!
+        Items:           order.Items,
+        Total:           order.Total,
+        Timestamp:       order.Timestamp,
+        CreatedAt:       time.Now().Format(time.RFC3339),
+    }
+
+    // Save to DynamoDB (existing code continues...)
+    // ...
 }
 
-// Send twice - should get same order ID both times
-await fetch('http://localhost:8000', {
-  method: 'POST',
-  headers: {'Content-Type': 'application/json'},
-  body: JSON.stringify(order)
-})
+// STEP 5: Helper function to find existing order by idempotency key
+func findOrderByIdempotencyKey(key string) *OrderRecord {
+    // Scan DynamoDB table for item where IdempotencyKey == key
+    // Note: For this lab, using Scan is acceptable
+    // In production, you'd use a GSI on IdempotencyKey for better performance
+
+    svc := dynamodb.NewFromConfig(cfg)
+    tableName := os.Getenv("TABLE_NAME")
+
+    input := &dynamodb.ScanInput{
+        TableName: aws.String(tableName),
+        FilterExpression: aws.String("idempotency_key = :key"),
+        ExpressionAttributeValues: map[string]types.AttributeValue{
+            ":key": &types.AttributeValueMemberS{Value: key},
+        },
+    }
+
+    result, err := svc.Scan(context.TODO(), input)
+    if err != nil {
+        log.Printf("Error scanning for idempotency key: %v", err)
+        return nil
+    }
+
+    if len(result.Items) == 0 {
+        return nil // Not found
+    }
+
+    // Found existing order - unmarshal and return it
+    var order OrderRecord
+    err = attributevalue.UnmarshalMap(result.Items[0], &order)
+    if err != nil {
+        log.Printf("Error unmarshaling order: %v", err)
+        return nil
+    }
+
+    return &order
+}
 ```
 
-### Success Criteria
-- Invalid orders are rejected with clear error messages
-- Duplicate submissions return the same order ID without creating duplicates
-- All validation errors include helpful messages for debugging
+**Don't forget to update the structs:**
 
-## Option 3: Circuit Breaker Pattern in Frontend
+```go
+type Order struct {
+    Items          []OrderItem `json:"items"`
+    Total          float64     `json:"total"`
+    Timestamp      string      `json:"timestamp"`
+    IdempotencyKey string      `json:"idempotency_key"` // Add this
+}
 
-### Problem
-When the microservice is completely down, the frontend keeps trying to send requests, leading to poor user experience. Each checkout attempt takes the full timeout period before failing.
+type OrderRecord struct {
+    PK             string      `dynamodbav:"PK"`
+    SK             string      `dynamodbav:"SK"`
+    OrderID        string      `dynamodbav:"order_id"`
+    IdempotencyKey string      `dynamodbav:"idempotency_key"` // Add this
+    Items          []OrderItem `dynamodbav:"items"`
+    Total          float64     `dynamodbav:"total"`
+    Timestamp      string      `dynamodbav:"timestamp"`
+    CreatedAt      string      `dynamodbav:"created_at"`
+}
+```
 
-### Current Behavior
-Every checkout attempt makes a request to the microservice, regardless of previous failures. If the backend is down, users experience repeated long waits.
+## Using AI to Implement
 
-### Your Task
-Implement the Circuit Breaker pattern in the frontend:
+You're encouraged to use Claude Code or GitHub Copilot to help implement this pattern.
 
-1. **Circuit states**:
-   - **Closed**: Normal operation, requests go through
-   - **Open**: Too many failures detected, fail fast without making requests
-   - **Half-Open**: After timeout, try one request to test if backend recovered
+**Suggested Claude Code prompt:**
 
-2. **Failure threshold**: Open circuit after 3 consecutive failures
+```
+I need to implement idempotency keys and automatic retries for my checkout system to prevent duplicate orders.
 
-3. **Recovery timeout**: After 30 seconds in Open state, transition to Half-Open
+FRONTEND (webapp/src/components/Cart.jsx):
+1. Generate a UUID once per checkout button click using crypto.randomUUID()
+2. Include it in the order request as "idempotency_key"
+3. Add retry logic with exponential backoff (delays: 0ms, 1000ms, 3000ms, 5000ms)
+4. Retry on timeout (AbortError) or 5xx server errors
+5. Reuse the SAME idempotency key for all retry attempts
+6. Update status message to show "Retrying... (attempt X/4)" during retries
+7. Stop retrying on success or 4xx client errors
 
-4. **User feedback**:
-   - Show when circuit is open ("Service temporarily unavailable, will retry in 25s")
-   - Show countdown timer
-   - Allow manual "Try Again" button
+BACKEND (service/main.go):
+1. Add IdempotencyKey field to Order and OrderRecord structs
+2. Before processing an order, scan DynamoDB for an existing order with the same idempotency_key
+3. If found, return the existing order with 200 OK (prevents duplicate)
+4. If not found, process the order normally and save it with the idempotency_key
+5. Use DynamoDB Scan with FilterExpression (not GSI) to find existing orders
+6. Log when returning existing orders: "Found existing order {order_id} with key {key}"
 
-### Hints
-- Create a `CircuitBreaker` class or React hook (e.g., `useCircuitBreaker()`)
-- Track failure count and circuit state in React state or localStorage
-- Use `setTimeout()` to handle recovery timeout
-- Consider showing a different UI when circuit is open
+Important: The idempotency key should be generated ONCE when the user clicks checkout, not on every HTTP request attempt. Retries must reuse the same key.
 
-### Testing with ToxiProxy
+Please implement both frontend and backend changes.
+```
+
+## Testing Your Implementation
+
+### Step 1: Setup Chaos Conditions
+
+Add latency toxic to simulate slow backend (requests take 5-6 seconds):
+
 ```bash
-# Simulate complete backend failure
 curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
-  -d '{"name": "timeout", "type": "timeout", "attributes": {"timeout": 0}}'
-
-# Try checkout 3 times - circuit should open
-# Wait for recovery period - circuit should allow one test request
-
-# Remove toxic
-curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/timeout
-
-# Circuit should close and requests succeed
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "latency-3000",
+    "type": "latency",
+    "attributes": {"latency": 3000, "jitter": 500}
+  }'
 ```
 
-### Success Criteria
-- Circuit opens after repeated failures
-- Users get immediate feedback when circuit is open
-- Circuit recovers automatically when backend comes back
-- No wasted requests when backend is known to be down
-
-## Deployment Workflow
-
-### For Microservice changes (Option 2):
+Verify timeout is 5 seconds:
 ```bash
-# Rebuild and restart the microservice container
-docker-compose up -d --build service
+# Check webapp/src/config.js
+grep REQUEST_TIMEOUT webapp/src/config.js
+# Should show: export const REQUEST_TIMEOUT = 5000;
 ```
 
-### For Frontend changes (Options 1 & 3):
-The Vite dev server will automatically reload when you save files. If changes don't appear, restart it:
+You should see "Request timeout: 5s" displayed in the cart UI.
+
+### Step 2: Test the Flow
+
+1. **Open browser console** (F12 → Console tab)
+2. **Click checkout** once
+3. **Watch console logs:**
+   - "Sending order (attempt 1): {... idempotency_key: 'abc-123'}"
+   - "Request timed out, will retry..."
+   - "Sending order (attempt 2): {... idempotency_key: 'abc-123'}" (SAME key!)
+   - "Order response: {order_id: '...'}"
+4. **Observe UI:**
+   - First attempt shows "Processing your order..."
+   - Timeout at ~5 seconds
+   - Shows "Retrying... (attempt 2/4)"
+   - After another 1s delay, retry #1
+   - Eventually succeeds and shows "Order placed successfully!"
+
+### Step 3: Verify No Duplicates
+
+Count orders in DynamoDB:
 ```bash
-cd webapp
-npm run dev
+aws dynamodb scan --table-name chaos-coffee-$STUDENT_ID --query 'Count'
 ```
 
-## Document Your Findings
+**Expected:** Count increases by **1** (not 2, 3, or 4)
 
-Create a file `ROBUSTNESS-FINDINGS.md` with:
+Even though the request was sent multiple times, only ONE order was created because of the idempotency key.
 
-```markdown
-# Robustness Improvement Findings
+### Step 4: Check Backend Logs
 
-## Improvement Implemented
-[Option 1, 2, or 3]
-
-## Changes Made
-- Files changed: ...
-- Key code changes: ...
-
-## Testing Performed
-- Toxic used: ...
-- Expected behavior: ...
-- Actual behavior: ...
-
-## Observations
-- What worked well: ...
-- Unexpected discoveries: ...
-
-## Metrics
-- Before: [e.g., 100% failure rate with 3s latency]
-- After: [e.g., 95% success rate after retries]
-
-## Lessons Learned
-[Your insights about building robust distributed systems]
+```bash
+docker logs chaos-coffee-service --tail 50
 ```
+
+**Look for:**
+```
+Received order with idempotency key: abc-123-def-456
+Order processed successfully: order-xyz-789
+Received order with idempotency key: abc-123-def-456
+Found existing order order-xyz-789 with key abc-123-def-456 - returning it
+```
+
+This confirms the retry found the existing order instead of creating a duplicate.
+
+### Step 5: Clean Up
+
+Remove the toxic:
+```bash
+curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/latency-3000
+```
+
+## Reflection
+
+Take a few minutes to think about what you implemented. Be prepared to share with the class:
+
+- How does automatic retry improve the user experience compared to showing an error?
+- What would happen without idempotency keys when retries occur?
+- Why is it critical to generate the idempotency key ONCE per button click, not per HTTP request?
+- How do production systems like Stripe use this pattern?
+- What other scenarios (besides timeouts) would benefit from automatic retries?
 
 ---
 
