@@ -29,9 +29,9 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
 
       console.log('Sending order to service:', order)
 
-      // Create AbortController for 5-second timeout (enterprise architecture rule)
+      // Create AbortController with timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
 
       const response = await fetch(SERVICE_URL, {
         method: 'POST',
@@ -67,7 +67,7 @@ const Cart = ({ cart, onClose, onUpdateQuantity, onRemoveItem, totalPrice }) => 
       if (error.name === 'AbortError') {
         setStatusMessage({
           type: 'error',
-          text: 'Order timed out after 5 seconds (enterprise timeout policy)'
+          text: 'Order timed out - request took too long'
         })
       } else {
         setStatusMessage({

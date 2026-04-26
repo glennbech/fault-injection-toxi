@@ -457,6 +457,24 @@ Your enterprise architect just announced a new mandate:
 
 **Your challenge:** Test if this 5-second timeout is safe for your coffee ordering system.
 
+### Implement the Enterprise Timeout Policy
+
+To comply with the enterprise architecture decision, you need to update the webapp to enforce a 5-second timeout.
+
+**Edit `webapp/src/components/Cart.jsx`:**
+
+Find this line (around line 34):
+```javascript
+const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+```
+
+Change it to:
+```javascript
+const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout (enterprise policy)
+```
+
+**Save the file.** The webapp will automatically reload with hot module replacement.
+
 ### Current Service Behavior
 
 Your Go microservice calls three external services sequentially:
@@ -518,7 +536,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 
 **Service processing time now:** 2-3 seconds + 1.5 seconds = **3.5-4.5 seconds**
 
-**Note:** The webapp has a 5-second timeout configured (enterprise architecture rule). Requests taking longer than 5 seconds will be aborted by the frontend.
+**Note:** With the 5-second timeout you configured, requests should complete successfully since they're under the limit.
 
 **Steps:**
 1. Place 10 orders (do this multiple times)
@@ -568,7 +586,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 
 **Service processing time now:** 2-3 seconds + 3 seconds (±500ms jitter) = **5-6 seconds**
 
-**Note:** The webapp has a 5-second timeout. With jitter, some requests will complete just under 5 seconds, but most will exceed it and timeout.
+**Note:** With the 5-second timeout and jitter, some requests will complete just under 5 seconds, but most will exceed it and timeout.
 
 **Steps:**
 1. Place 10 orders
@@ -581,10 +599,12 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 
 **Critical Discovery:**
 You'll likely find that:
-- Frontend shows "Order timed out after 5 seconds (enterprise timeout policy)"
+- Frontend shows "Order timed out - request took too long"
 - But the backend successfully saved many orders to DynamoDB
 - Users think their order failed and might try again
 - **Result:** Duplicate orders and confused customers
+
+**The problem:** The 5-second timeout kills the request from the frontend's perspective, but the backend continues processing and saves the order. This creates data inconsistency.
 
 **Clean up:**
 ```bash
