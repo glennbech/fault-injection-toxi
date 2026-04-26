@@ -161,12 +161,13 @@ You should see output confirming the package was created.
 
 ## Step 3: Deploy Your Infrastructure
 
-From your Codespace terminal, create a deployment directory:
+From your Codespace terminal, create a deployment directory with your unique student ID:
 
 ```bash
 cd ..
-mkdir -p my-deployment
-cd my-deployment
+export STUDENT_ID="your-unique-id"  # Replace with your name (lowercase, no spaces)
+mkdir -p "deployment-${STUDENT_ID}"
+cd "deployment-${STUDENT_ID}"
 ```
 
 Create a `main.tf` file that uses the module:
@@ -178,6 +179,13 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
+  }
+
+  # Remote state backend to avoid conflicts between students
+  backend "s3" {
+    bucket = "your-terraform-state-bucket"  # Provided by instructor
+    key    = "students/YOUR_NAME_HERE/terraform.tfstate"  # Use your student_id here
+    region = "eu-north-1"
   }
 }
 
@@ -200,6 +208,8 @@ output "dynamodb_table_name" {
   value = module.coffee_chaos.dynamodb_table_name
 }
 ```
+
+**Note:** If you're working alone or your instructor hasn't provided a shared state bucket, you can omit the `backend "s3"` block and use local state instead.
 
 Deploy the infrastructure:
 

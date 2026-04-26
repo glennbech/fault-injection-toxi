@@ -37,6 +37,7 @@ Thumbs.db
 # Student deployment directories
 my-deployment/
 deployments/
+deployment-*/
 
 # Local config
 local.env
