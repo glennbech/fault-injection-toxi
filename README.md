@@ -320,10 +320,10 @@ Before injecting chaos, make predictions using the scientific method.
    - Will users click checkout multiple times? How does the UI protect against that already?
    - What will happen to DynamoDB (duplicate records)?
 
-2. **What will happen when we add 50% packet loss?**
-   - How many requests will fail?
-   - Will the UI show errors?
-   - What will users think is broken?
+2. **How does the application respond to timeouts?**
+   - What happens when a request takes longer than the timeout?
+   - Will the UI show an error message?
+   - Does the backend continue processing even after the frontend times out?
 
 3. **What will happen when we add random timeouts?**
    - Will some requests succeed?
