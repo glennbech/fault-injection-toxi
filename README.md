@@ -540,14 +540,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 
 **Steps:**
 1. Place 10 orders (do this multiple times)
-2. Track results in a table:
-
-| Attempt | Frontend Result | Actual Time | Saved to DB? |
-|---------|----------------|-------------|--------------|
-| 1       | Success/Error  | ~X sec     | Yes/No       |
-| 2       | Success/Error  | ~X sec     | Yes/No       |
-| ...     | ...            | ...         | ...          |
-
+2. Observe the results in the browser
 3. Check DynamoDB after:
    ```bash
    aws dynamodb scan --table-name chaos-coffee-${STUDENT_ID} \
@@ -626,40 +619,6 @@ When orders timeout in the frontend, what actually happens on the backend?
 ```bash
 curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/black-friday-latency
 ```
-
-## Step 8: Reflect and Document Your Findings
-
-Compare your hypothesis to actual observations:
-
-**Analysis Questions:**
-
-1. **What was the worst user experience?**
-   - Long waits with no feedback?
-   - Silent failures?
-   - Duplicate actions?
-
-2. **What resilience patterns would help?**
-   - Retries for transient failures?
-   - Timeouts to fail fast?
-   - Optimistic UI updates?
-   - Circuit breaker to prevent cascading failures?
-   - Loading indicators and progress feedback?
-
-3. **What should the steady state be?**
-   - Response time < 500ms for 99% of requests?
-   - No duplicate records?
-   - Clear error messages?
-   - Graceful degradation under load?
-
-**Document your findings:**
-
-Create a brief report with:
-- Hypothesis for each experiment
-- Actual observed behavior
-- Screenshots or logs showing failures
-- List of proposed improvements
-
-Save your findings - you'll implement improvements in Part 2.
 
 ---
 
