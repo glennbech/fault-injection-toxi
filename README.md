@@ -585,43 +585,6 @@ curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/black-friday-lat
 curl -X DELETE http://localhost:8474/proxies/chaos-proxy/toxics/enterprise-timeout
 ```
 
----
-
-### Reflection and Discussion
-
-After running all three experiments, discuss these questions with your team:
-
-**1. Was the enterprise architect right?**
-- Is the 5-second timeout protecting the infrastructure?
-- What's the cost of this protection (failed orders)?
-- What would happen without any timeout?
-
-**2. What's the right timeout value?**
-- Should it be 5 seconds? 7 seconds? 10 seconds?
-- How do you decide?
-- Should different endpoints have different timeouts?
-
-**3. What are the alternatives?**
-- **Optimize the service**: Can you make external calls faster or parallel?
-- **Async processing**: Accept the order immediately, process it later
-- **Circuit breaker**: Stop calling slow external services
-- **Idempotency**: Allow safe retries without creating duplicates
-- **Better monitoring**: Alert when processing time approaches timeout
-
-**4. The real problem**
-The timeout revealed a deeper issue:
-- Your service depends on synchronous calls to three external systems
-- You have no control over their performance
-- Their slowdown becomes your problem
-- **This is tight coupling** - the hallmark of fragile systems
-
-**Document your findings:**
-Create a brief report with:
-- Your hypothesis for each experiment
-- Actual results (success/failure rates)
-- Screenshots or logs showing the problem
-- Recommendations for the enterprise architect
-
 ## Step 8: Reflect and Document Your Findings
 
 Compare your hypothesis to actual observations:
