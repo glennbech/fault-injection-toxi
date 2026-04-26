@@ -576,7 +576,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 **Note:** With the 5-second timeout you configured, requests should complete successfully since they're under the limit.
 
 **Steps:**
-1. Place 10 orders (do this multiple times)
+1. Place multiple orders
 2. Observe the results in the browser
 3. Check DynamoDB after:
    ```bash
@@ -619,7 +619,7 @@ curl -X POST http://localhost:8474/proxies/chaos-proxy/toxics \
 **Note:** With the 5-second timeout and jitter, some requests will complete just under 5 seconds, but most will exceed it and timeout.
 
 **Steps:**
-1. Place 10 orders
+1. Place multiple orders
 2. Observe the failure rate
 3. Check backend logs - did the service finish processing even when frontend timed out?
    ```bash
