@@ -767,12 +767,24 @@ In Parts 1 and 2, you worked with chaos engineering and tactical robustness impr
 
 This part focuses on **working effectively with AI coding assistants** like Claude Code to explore architectural alternatives, evaluate trade-offs, and implement more sophisticated solutions.
 
+## Your AWS Environment
+
+**You have access to a full AWS account** with all services available for your re-architecture:
+
+- **Existing infrastructure:** DynamoDB table (deployed via `infra/` folder)
+- **Available services:** Lambda, SQS, SNS, EventBridge, Step Functions, API Gateway, S3, CloudWatch, and more
+- **Infrastructure as Code:** Extend the `infra/` Terraform configuration to deploy new AWS resources
+- **Cloud-native architecture:** Design solutions that leverage managed AWS services for robustness and scalability
+
+When discussing architecture with Claude Code, **think cloud-native**: replace Docker containers with Lambda functions, use SQS for queues, leverage AWS managed services for reliability and resilience.
+
 ## Learning Objectives
 
 - Learn how to prompt AI assistants for architectural guidance
 - Compare minimal context vs. detailed context prompting strategies
 - Use plan mode to explore solutions before implementation
 - Critically evaluate AI-generated architectural proposals
+- Design cloud-native AWS architectures for production resilience
 - Document the AI collaboration process
 
 ## Overview of Experiments
@@ -855,13 +867,17 @@ Goals for re-architecture:
 - Maintain simplicity (this is a learning project, not production)
 
 Technologies I'm already using:
-- Go microservice in Docker
-- DynamoDB for data storage
-- React frontend
-- ToxiProxy for chaos testing
-- Terraform for IaC
+- Go microservice in Docker (can be replaced with Lambda)
+- DynamoDB for data storage (already deployed)
+- React frontend (could use S3 + CloudFront)
+- ToxiProxy for chaos testing (local only)
+- Terraform for IaC (in infra/ folder)
 
-Please suggest an architecture that achieves these goals. Explain the trade-offs and what components I'd need to add.
+AWS services available for re-architecture:
+- Lambda, SQS, SNS, EventBridge, Step Functions, API Gateway, S3, CloudWatch, and more
+- I can extend the infra/ Terraform configuration to deploy new AWS resources
+
+Please suggest a cloud-native AWS architecture that achieves these goals. Explain the trade-offs and what AWS services I'd need to add.
 ```
 
 ### What to Observe
@@ -900,14 +916,20 @@ Ignore: node_modules/, .git/, lambda/
 I want to improve the robustness of my coffee shop application. Before we write any code, let's create a plan.
 
 Current situation:
-- Frontend makes direct synchronous calls to Go microservice
+- Frontend makes direct synchronous calls to Go microservice in Docker
 - Microservice writes to DynamoDB immediately
 - No retry logic or error recovery
 
-I want to explore architectural options that:
+Available AWS resources:
+- Full AWS account with Lambda, SQS, SNS, EventBridge, Step Functions, API Gateway, S3, CloudWatch
+- Existing Terraform infrastructure in infra/ folder
+- Can deploy new AWS resources via Terraform
+
+I want to explore cloud-native AWS architectural options that:
 - Reduce coupling between frontend and backend
 - Allow the system to handle temporary failures gracefully
-- Don't require major rewrites (incremental improvements are OK)
+- Leverage managed AWS services for reliability
+- Can be deployed via Terraform (extend infra/ folder)
 
 Let's discuss a few approaches and their trade-offs before deciding on one.
 ```
