@@ -139,9 +139,17 @@ resource "aws_lambda_function_url" "order_processor_url" {
 
 # Permission for Function URL to invoke Lambda
 resource "aws_lambda_permission" "function_url" {
-  statement_id           = "FunctionURLAllowPublicAccess"
+  statement_id           = "PublicAccess"
   action                 = "lambda:InvokeFunctionUrl"
   function_name          = aws_lambda_function.order_processor.function_name
   principal              = "*"
   function_url_auth_type = aws_lambda_function_url.order_processor_url.authorization_type
+}
+
+# Additional permission for public invocation
+resource "aws_lambda_permission" "function_invoke" {
+  statement_id  = "PublicInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.order_processor.function_name
+  principal     = "*"
 }
